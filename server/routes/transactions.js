@@ -13,6 +13,14 @@ const names = [
 "Neha Gupta"
 ];
 
+const paymentApps = [
+    "Google Pay",
+    "PhonePe",
+    "Paytm",
+    "BHIM",
+    "Amazon Pay"
+];
+
 router.post("/generate", async (req, res) => {
 const client = await pool.connect();
 
@@ -48,6 +56,9 @@ try {
     const personName =
         names[Math.floor(Math.random() * names.length)];
 
+    const appName =
+        paymentApps[Math.floor(Math.random() * paymentApps.length)];
+
     // Cancel a debit that exceeds the available balance.
     if (type === "DEBIT" && amount > balance) {
         await client.query("COMMIT");
@@ -59,6 +70,7 @@ try {
                 type: "DEBIT",
                 amount: amount.toFixed(2),
                 person_name: personName,
+                app_name: appName,
                 description: "Insufficient balance",
                 created_at: new Date().toISOString()
             }
@@ -72,10 +84,10 @@ try {
 
     const result = await client.query(
         `INSERT INTO transactions
-            (person_name, amount, type, description)
-         VALUES ($1, $2, $3, $4)
+            (person_name, amount, type, description, app_name)
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [personName, amount, type, description]
+        [personName, amount, type, description, appName]
     );
 
     await client.query("COMMIT");
@@ -163,3 +175,74 @@ const result = await pool.query(`             SELECT
 });
 
 module.exports = router;
+
+// Get monthly summary grouped by app.
+router.get("/monthly", async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                TO_CHAR(DATE_TRUNC('month', created_at), 'Mon YYYY') AS month,
+                DATE_TRUNC('month', created_at) AS month_start,
+                COALESCE(
+                    SUM(CASE WHEN type = 'CREDIT' THEN amount ELSE 0 END),
+                    0
+                ) AS "totalCredits",
+                COALESCE(
+                    SUM(CASE WHEN type = 'DEBIT' THEN amount ELSE 0 END),
+                    0
+                ) AS "totalDebits",
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN type = 'CREDIT' THEN amount
+                            ELSE -amount
+                        END
+                    ),
+                    0
+                ) AS "netBalance",
+                COUNT(*) AS "transactionCount"
+            FROM transactions
+            GROUP BY DATE_TRUNC('month', created_at)
+            ORDER BY month_start ASC
+        `);
+
+        return res.json(result.rows);
+    } catch (error) {
+        console.error("Monthly summary error:", error);
+
+        return res.status(500).json({
+            message: "Failed to fetch monthly summary"
+        });
+    }
+});
+
+// Get spending breakdown per payment app.
+router.get("/by-app", async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                app_name AS "appName",
+                COUNT(*) AS "transactionCount",
+                COALESCE(
+                    SUM(CASE WHEN type = 'CREDIT' THEN amount ELSE 0 END),
+                    0
+                ) AS "totalCredits",
+                COALESCE(
+                    SUM(CASE WHEN type = 'DEBIT' THEN amount ELSE 0 END),
+                    0
+                ) AS "totalDebits",
+                COALESCE(SUM(amount), 0) AS "totalVolume"
+            FROM transactions
+            GROUP BY app_name
+            ORDER BY "totalVolume" DESC
+        `);
+
+        return res.json(result.rows);
+    } catch (error) {
+        console.error("Per-app summary error:", error);
+
+        return res.status(500).json({
+            message: "Failed to fetch per-app summary"
+        });
+    }
+});
