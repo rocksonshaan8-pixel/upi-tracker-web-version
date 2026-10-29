@@ -19,4 +19,14 @@ export const getSummary = async () => {
     return response.data;
 };
 
+export const getMonthlySummary = async () => {
+    const response = await api.get("/transactions/monthly");
+    return response.data;
+};
+
+export const getAppBreakdown = async () => {
+    const response = await api.get("/transactions/by-app");
+    return response.data;
+};
+
 export default api;

@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { generateTransaction } from "../services/api";
 
+const paymentAppLogos = {
+    "Google Pay": "/payment-logos/google-pay.svg",
+    "PhonePe": "/payment-logos/phonepe.svg",
+    "Paytm": "/payment-logos/paytm.svg",
+    "BHIM": "/payment-logos/bhim.svg",
+    "Amazon Pay": "/payment-logos/amazon-pay.svg"
+};
+
 function Notification({ onTransactionGenerated }) {
 const [loading, setLoading] = useState(false);
 const [notification, setNotification] = useState(null);
@@ -89,45 +97,59 @@ return (
                     <>
                         <strong className="toast-error">{error}</strong>
                     </>
-                ) : notification.cancelled ? (
-                    <>
-                        <strong className="toast-cancelled">
-                            Transaction Cancelled
-                        </strong>
-
-                        <p>{notification.person_name}</p>
-
-                        <p className="toast-cancelled toast-amount">
-                            −₹{formattedAmount}
-                        </p>
-
-                        <small>
-                            Insufficient balance. No money was deducted.
-                        </small>
-                    </>
                 ) : (
-                    <>
-                        <strong>
-                            {notification.type === "CREDIT"
-                                ? "Money Received"
-                                : "Money Sent"}
-                        </strong>
+                    <div className="toast-content">
+                        <img
+                            src={paymentAppLogos[notification.app_name]}
+                            alt={notification.app_name || "Payment app"}
+                            className="toast-app-logo"
+                        />
+                        <div className="toast-body">
+                            {notification.cancelled ? (
+                            <>
+                                <strong className="toast-cancelled">
+                                    Transaction Cancelled
+                                </strong>
 
-                        <p>{notification.person_name}</p>
+                                <p>{notification.person_name}</p>
 
-                        <p
-                            className={
-                                notification.type === "CREDIT"
-                                    ? "toast-credit"
-                                    : "toast-debit"
-                            }
-                        >
-                            {notification.type === "CREDIT" ? "+" : "−"}₹
-                            {formattedAmount}
-                        </p>
+                                <p className="toast-cancelled toast-amount">
+                                    −₹{formattedAmount}
+                                </p>
 
-                        <small>{notification.description}</small>
-                    </>
+                                <small>
+                                    Insufficient balance. No money was deducted.
+                                </small>
+                            </>
+                            ) : (
+                            <>
+                                <strong>
+                                    {notification.type === "CREDIT"
+                                        ? "Money Received"
+                                        : "Money Sent"}
+                                </strong>
+
+                                <p>{notification.person_name}</p>
+
+                                <p
+                                    className={
+                                        notification.type === "CREDIT"
+                                            ? "toast-credit"
+                                            : "toast-debit"
+                                    }
+                                >
+                                    {notification.type === "CREDIT" ? "+" : "−"}₹
+                                    {formattedAmount}
+                                </p>
+
+                                <small>{notification.description}</small>
+                            </>
+                            )}
+                        <small className="toast-app-name">
+                            Paid via {notification.app_name || "UPI"}
+                        </small>
+                        </div>
+                    </div>
                 )}
             </div>
         )}
