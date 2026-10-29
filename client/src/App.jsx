@@ -1,10 +1,12 @@
 import { useState } from "react";
 import Dashboard from "./components/Dashboard";
+import About from "./components/About";
 import Notification from "./components/Notification";
 import "./App.css";
 
 function App() {
 const [refreshKey, setRefreshKey] = useState(0);
+const [page, setPage] = useState("dashboard");
 
 
 const handleTransactionGenerated = () => {
@@ -17,17 +19,27 @@ return (
             <div className="brand-mark">₹</div>
             <h1>UPI Tracker</h1>
             <p>Every transaction. One clear picture.</p>
-            <span className="status-badge">
+            <button
+                className="status-badge"
+                onClick={() => setPage(page === "dashboard" ? "about" : "dashboard")}
+                title={page === "dashboard" ? "About UPI Tracker" : "Back to Dashboard"}
+            >
                 <span className="status-dot"></span>
-                Transaction dashboard
-            </span>
+                {page === "dashboard" ? "About" : "Back to Dashboard"}
+            </button>
         </header>
 
-        <Dashboard refreshKey={refreshKey} />
+        {page === "about" ? (
+            <About onBack={() => setPage("dashboard")} />
+        ) : (
+            <>
+                <Dashboard refreshKey={refreshKey} />
 
-        <footer className="app-footer">
-            UPI Tracker <span>·</span> Simulated transactions for demonstration
-        </footer>
+                <footer className="app-footer">
+                    UPI Tracker <span>·</span> Simulated transactions for demonstration
+                </footer>
+            </>
+        )}
 
         <Notification
             onTransactionGenerated={handleTransactionGenerated}
