@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
+const multer = require("multer");
+const { uploadToCloudinary, resolveResourceType } = require("../services/cloudinaryUpload");
 
 const names = [
 "Rohan Das",
@@ -20,6 +22,45 @@ const paymentApps = [
     "BHIM",
     "Amazon Pay"
 ];
+
+// Accept images up to 10 MB, kept in memory for a direct Cloudinary stream.
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith("image/")) {
+            cb(null, true);
+        } else {
+            cb(new Error("Only image files are allowed"));
+        }
+    }
+});
+
+// Upload an image (e.g. a payment screenshot) to Cloudinary.
+router.post("/upload", upload.single("image"), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: "No image file provided" });
+        }
+
+        const uploaded = await uploadToCloudinary(req.file.buffer, {
+            resourceType: resolveResourceType(req.file),
+            folder: "upi_tracker/images"
+        });
+
+        return res.status(201).json({
+            message: "Image uploaded successfully",
+            url: uploaded.url,
+            publicId: uploaded.publicId
+        });
+    } catch (error) {
+        console.error("Cloudinary upload error:", error);
+
+        return res.status(500).json({
+            message: "Failed to upload image"
+        });
+    }
+});
 
 router.post("/generate", async (req, res) => {
 const client = await pool.connect();
