@@ -2,13 +2,34 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
+// Allow multiple origins via comma-separated CORS_ORIGIN, falling back to localhost dev
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:4173")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser requests (curl, health checks) which have no Origin header
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: false,
+};
+
 const pool = require("./db");
 const transactionRoutes = require("./routes/transactions");
+const documentRoutes = require("./routes/documents");
+const uploadRoutes = require("./routes/uploadRoutes");
 const app = express();
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/documents", documentRoutes);
+app.use("/api/uploads", uploadRoutes);
 
 // Test route
 app.get("/", (req, res) => {
